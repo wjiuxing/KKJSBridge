@@ -75,6 +75,8 @@
     } else {
         [self loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@""]]];
     }
+    
+    [self p_removeAllCustomSubviews];
 }
 
 #pragma mark - clear backForwardList
@@ -87,6 +89,36 @@
         [self.backForwardList performSelector:sel];
     }
 #pragma clang diagnostic pop
+}
+
+
+#pragma mark -
+#pragma mark Private
+
+- (void)p_removeAllCustomSubviews
+{
+    NSArray *classes = [self.class classesOfViewsToRemoveWhenReusing];
+    if (classes.count == 0) {
+        return;
+    }
+    
+    for (NSInteger index = self.scrollView.subviews.count - 1; index >= 0; --index) {
+        UIView *view = self.scrollView.subviews[index];
+        if ([classes containsObject:view.class]) {
+            [view removeFromSuperview];
+        }
+    }
+}
+
+static NSArray *_classesOfViewsToRemoveWhenReusing = nil;
++ (void)setClassesOfViewsToRemoveWhenReusing:(NSArray<Class> *)classesOfViewsToRemoveWhenReusing
+{
+    _classesOfViewsToRemoveWhenReusing = classesOfViewsToRemoveWhenReusing;
+}
+
++ (NSArray<Class> *)classesOfViewsToRemoveWhenReusing
+{
+    return _classesOfViewsToRemoveWhenReusing;
 }
 
 @end
