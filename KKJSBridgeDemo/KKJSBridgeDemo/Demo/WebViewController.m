@@ -13,6 +13,7 @@
 #import "ModuleA.h"
 #import "ModuleB.h"
 #import "ModuleC.h"
+#import "ModuleD.h"
 #import "ModuleDefault.h"
 
 @interface WebViewController () <KKWebViewDelegate, WKUIDelegate>
@@ -106,6 +107,8 @@
     [self.jsBridgeEngine.moduleRegister registerModuleClass:ModuleB.class withContext:context];
     // 注册 模块C
     [self.jsBridgeEngine.moduleRegister registerModuleClass:ModuleC.class];
+    // 注册 模块D
+    [self.jsBridgeEngine.moduleRegister registerModuleClass:ModuleD.class];
 }
 
 #pragma mark - KKJSBridgeAjaxDelegateManager
