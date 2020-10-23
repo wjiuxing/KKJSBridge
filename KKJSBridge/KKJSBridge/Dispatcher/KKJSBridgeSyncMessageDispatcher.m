@@ -52,7 +52,6 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
     
     NSString *moduleName = message.module;
     NSString *methodName = message.method;
-    NSDictionary *params = message.data;
     if (!moduleName || !methodName) {
 #ifdef DEBUG
         NSLog(@"KKJSBridge Error: module or method is not found");
@@ -94,6 +93,11 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
             }
         }
     }
+    
+    if ([moduleClass respondsToSelector:@selector(fixParamtersForMethod:message:)]) {
+        ((void *(*)(id, SEL, NSString *, KKJSBridgeMessage *))objc_msgSend)(moduleClass, @selector(fixParamtersForMethod:message:), methodName, message);
+    }
+    NSDictionary *params = message.data;
     
     /**
      模块初始化

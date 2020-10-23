@@ -63,7 +63,6 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
 - (void)dispatchCallbackMessageInQueue:(KKJSBridgeMessage *)message {
     NSString *moduleName = message.module;
     NSString *methodName = message.method;
-    NSDictionary *params = message.data;
     if (!moduleName || !methodName) {
 #ifdef DEBUG
         NSLog(@"KKJSBridge Error: module or method is not found");
@@ -81,9 +80,8 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
     
     Class nativeClass = metaClass.moduleClass;
     Class<KKJSBridgeModule> moduleClass = nativeClass;
-    /**
-     方法调用映射，只做一层映射，不会递归处理
-     */
+    
+    // 方法调用映射，只做一层映射，不会递归处理
     if ([moduleClass respondsToSelector:@selector(methodInvokeMapper)]) {
         NSDictionary *methodMapper = [moduleClass methodInvokeMapper];
         NSString *value = methodMapper[methodName];
@@ -106,6 +104,11 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
             }
         }
     }
+    
+    if ([moduleClass respondsToSelector:@selector(fixParamtersForMethod:message:)]) {
+        ((void *(*)(id, SEL, NSString *, KKJSBridgeMessage *))objc_msgSend)(moduleClass, @selector(fixParamtersForMethod:message:), methodName, message);
+    }
+    NSDictionary *params = message.data;
     
     /**
      模块初始化
