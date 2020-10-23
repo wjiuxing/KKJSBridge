@@ -15,7 +15,7 @@
 #import "KKJSBridgeMessageDispatcher.h"
 #import "KKJSBridgeSyncMessageDispatcher.h"
 
-@interface KKWebView() <WKNavigationDelegate, WKUIDelegate>
+@interface KKWebView() <WKUIDelegate>
 
 /// A real delegate of the class.
 @property (nonatomic, weak) id<WKNavigationDelegate> realNavigationDelegate;
