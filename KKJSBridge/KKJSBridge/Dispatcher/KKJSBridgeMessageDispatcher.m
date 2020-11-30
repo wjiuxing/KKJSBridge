@@ -19,7 +19,6 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
 @interface KKJSBridgeMessageDispatcher()
 
 @property (nonatomic, weak) KKJSBridgeEngine *engine;
-@property (nonatomic, strong) NSOperationQueue *dispatchQueue;
 
 @end
 
@@ -28,8 +27,6 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
 - (instancetype)initWithEngine:(KKJSBridgeEngine *)engine {
     if (self = [super init]) {
         _engine = engine;
-        _dispatchQueue = [NSOperationQueue new];
-        _dispatchQueue.maxConcurrentOperationCount = 1;
     }
     
     return self;
@@ -55,13 +52,6 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
         }
     }
     
-    __weak typeof(self) weakSelf = self;
-    [self.dispatchQueue addOperationWithBlock:^{
-        [weakSelf dispatchCallbackMessageInQueue:message];
-    }];
-}
-
-- (void)dispatchCallbackMessageInQueue:(KKJSBridgeMessage *)message {
     NSString *moduleName = message.module;
     NSString *methodName = message.method;
     if (!moduleName || !methodName) {
@@ -123,9 +113,6 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
     if ([instance respondsToSelector:@selector(methodInvokeQueue)]) {
         methodInvokeQueue = [instance methodInvokeQueue];
     }
-    if (!methodInvokeQueue) {
-        methodInvokeQueue = [NSOperationQueue mainQueue];
-    }
     
     /**
      模块方法调用与回调处理
@@ -152,7 +139,8 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
             }
             
             [KKJSBridgeLogger log:@"Receive" module:moduleName method:methodName data:params];
-            [methodInvokeQueue addOperationWithBlock:^{
+            
+            dispatch_block_t operation = ^{
                 CFTimeInterval start = CFAbsoluteTimeGetCurrent();
                 ((void (*)(id, SEL, KKJSBridgeEngine *, NSDictionary *, KKJSBridgeMessageCallback))objc_msgSend)(instance, apiMethodNameSEL, self.engine, params, callback);
 #ifdef DEBUG
@@ -162,7 +150,13 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
                     NSLog(@"KKJSBridge Warnning: %@:%@ took '%f' ms.", moduleName, methodName, duration);
                 }
 #endif
-            }];
+            };
+            
+            if (nil == methodInvokeQueue) {
+                operation();
+            } else {
+                [methodInvokeQueue addOperationWithBlock:operation];
+            }
         } else {
 #ifdef DEBUG
             NSLog(@"KKJSBridge Error: method %@ is not defined in module %@", methodName, moduleName);
@@ -173,15 +167,12 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
 }
 
 - (void)dispatchEventMessage:(NSString *)eventName data:(NSDictionary * _Nullable)data {
-    __weak typeof(self) weakSelf = self;
-    [self.dispatchQueue addOperationWithBlock:^{
-        KKJSBridgeMessage *eventMessageResponse = [KKJSBridgeMessage new];
-        eventMessageResponse.messageType = KKJSBridgeMessageTypeEvent;
-        eventMessageResponse.eventName = eventName;
-        eventMessageResponse.data = data;
-        [KKJSBridgeLogger log:@"dispatch event" module:nil method:eventName data:data];
-        [weakSelf dispatchMessageResponse:eventMessageResponse];
-    }];
+    KKJSBridgeMessage *eventMessageResponse = [KKJSBridgeMessage new];
+    eventMessageResponse.messageType = KKJSBridgeMessageTypeEvent;
+    eventMessageResponse.eventName = eventName;
+    eventMessageResponse.data = data;
+    [KKJSBridgeLogger log:@"dispatch event" module:nil method:eventName data:data];
+    [self dispatchMessageResponse:eventMessageResponse];
 }
 
 - (void)dispatchMessageResponse:(KKJSBridgeMessage *)message {
