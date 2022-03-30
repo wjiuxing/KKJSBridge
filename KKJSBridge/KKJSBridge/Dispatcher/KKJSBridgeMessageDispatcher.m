@@ -64,7 +64,6 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
 - (void)dispatchCallbackMessageInQueue:(KKJSBridgeMessage *)message {
     NSString *moduleName = message.module;
     NSString *methodName = message.method;
-    NSDictionary *params = message.data;
     if (!moduleName || !methodName) {
 #ifdef DEBUG
         NSLog(@"KKJSBridge Error: module or method is not found");
@@ -82,9 +81,8 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
     
     Class nativeClass = metaClass.moduleClass;
     Class<KKJSBridgeModule> moduleClass = nativeClass;
-    /**
-     方法调用映射，只做一层映射，不会递归处理
-     */
+    
+    // 方法调用映射，只做一层映射，不会递归处理
     if ([moduleClass respondsToSelector:@selector(methodInvokeMapper)]) {
         NSDictionary *methodMapper = [moduleClass methodInvokeMapper];
         NSString *value = methodMapper[methodName];
@@ -108,65 +106,70 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
         }
     }
     
-    /**
-     模块初始化
-     */
+    // 模块初始化
     id instance = [self.engine.moduleRegister generateInstanceFromMetaClass:metaClass];
-    
-    /**
-     获取方法调用 Queue
-     */
-    NSOperationQueue *methodInvokeQueue;
-    if ([instance respondsToSelector:@selector(methodInvokeQueue)]) {
-        methodInvokeQueue = [instance methodInvokeQueue];
-    }
-    if (!methodInvokeQueue) {
-        methodInvokeQueue = [NSOperationQueue mainQueue];
+    if (nil == instance) {
+        return;
     }
     
-    /**
-     模块方法调用与回调处理
-     */
-    if (instance) {
-        NSString *apiMethodName = [NSString stringWithFormat:@"%@:params:responseCallback:", methodName];
-        SEL apiMethodNameSEL = NSSelectorFromString(apiMethodName);
-        
+    // 模块方法调用与回调处理
+    NSString *apiMethodName = [NSString stringWithFormat:@"%@:params:responseCallback:", methodName];
+    SEL apiMethodNameSEL = NSSelectorFromString(apiMethodName);
+    
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-        if ([instance respondsToSelector:apiMethodNameSEL]) { // 在调用实际 API
-            KKJSBridgeMessageCallback callback = nil;
-            if (message.callbackId) { // 当存在 callback 时，才需要把处理结果交给 H5
-                callback = ^(NSDictionary *responseData) {
-                    KKJSBridgeMessage *callbackMessageResponse = [KKJSBridgeMessage new];
-                    callbackMessageResponse.messageType = KKJSBridgeMessageTypeCallback;
-                    callbackMessageResponse.callbackId = message.callbackId;
-                    callbackMessageResponse.data = responseData;
-                    [KKJSBridgeLogger log:@"Send out" module:moduleName method:methodName data:responseData];
-                    [self dispatchMessageResponse:callbackMessageResponse];
-                };
-            } else if (message.callback) {
-                callback = message.callback;
+    if ([instance respondsToSelector:apiMethodNameSEL]) { // 在调用实际 API
+        SEL fixSEL = @selector(fixParametersIfNeededForMethod:message:);
+        if ([instance respondsToSelector:fixSEL]) {
+            BOOL executable = ((BOOL *(*)(id, SEL, NSString *, KKJSBridgeMessage *))objc_msgSend)(instance, fixSEL, methodName, message);
+            if (!executable) {
+                return;
             }
-            
-            [KKJSBridgeLogger log:@"Receive" module:moduleName method:methodName data:params];
-            [methodInvokeQueue addOperationWithBlock:^{
-                CFTimeInterval start = CFAbsoluteTimeGetCurrent();
-                ((void (*)(id, SEL, KKJSBridgeEngine *, NSDictionary *, KKJSBridgeMessageCallback))objc_msgSend)(instance, apiMethodNameSEL, self.engine, params, callback);
-#ifdef DEBUG
-                CFTimeInterval end = CFAbsoluteTimeGetCurrent();
-                CFTimeInterval duration = (end - start) * 1000.0;
-                if (duration > 16) {
-                    NSLog(@"KKJSBridge Warnning: %@:%@ took '%f' ms.", moduleName, methodName, duration);
-                }
-#endif
-            }];
-        } else {
-#ifdef DEBUG
-            NSLog(@"KKJSBridge Error: method %@ is not defined in module %@", methodName, moduleName);
-#endif
         }
-#pragma clang diagnostic pop
+        
+        KKJSBridgeMessageCallback callback = nil;
+        if (message.callbackId) { // 当存在 callback 时，才需要把处理结果交给 H5
+            callback = ^(NSDictionary *responseData) {
+                KKJSBridgeMessage *callbackMessageResponse = [KKJSBridgeMessage new];
+                callbackMessageResponse.messageType = KKJSBridgeMessageTypeCallback;
+                callbackMessageResponse.callbackId = message.callbackId;
+                callbackMessageResponse.data = responseData;
+                [KKJSBridgeLogger log:@"Send out" module:moduleName method:methodName data:responseData];
+                [self dispatchMessageResponse:callbackMessageResponse];
+            };
+        } else if (message.callback) {
+            callback = message.callback;
+        }
+        
+        NSDictionary *params = message.data;
+        [KKJSBridgeLogger log:@"Receive" module:moduleName method:methodName data:params];
+        
+        // 获取方法调用 Queue
+        NSOperationQueue *methodInvokeQueue;
+        if ([instance respondsToSelector:@selector(methodInvokeQueue)]) {
+            methodInvokeQueue = [instance methodInvokeQueue];
+        }
+        if (!methodInvokeQueue) {
+            methodInvokeQueue = [NSOperationQueue mainQueue];
+        }
+        
+        [methodInvokeQueue addOperationWithBlock:^{
+            CFTimeInterval start = CFAbsoluteTimeGetCurrent();
+            ((void (*)(id, SEL, KKJSBridgeEngine *, NSDictionary *, KKJSBridgeMessageCallback))objc_msgSend)(instance, apiMethodNameSEL, self.engine, params, callback);
+#ifdef DEBUG
+            CFTimeInterval end = CFAbsoluteTimeGetCurrent();
+            CFTimeInterval duration = (end - start) * 1000.0;
+            if (duration > 16) {
+                NSLog(@"KKJSBridge Warnning: %@:%@ took '%f' ms.", moduleName, methodName, duration);
+            }
+#endif
+        }];
+    } else {
+#ifdef DEBUG
+        NSLog(@"KKJSBridge Error: method %@ is not defined in module %@", methodName, moduleName);
+#endif
     }
+#pragma clang diagnostic pop
 }
 
 - (void)dispatchEventMessage:(NSString *)eventName data:(NSDictionary * _Nullable)data {

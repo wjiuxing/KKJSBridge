@@ -11,6 +11,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 @class KKJSBridgeEngine;
+@class KKJSBridgeMessage;
 
 @protocol KKJSBridgeModule <NSObject>
 
@@ -34,8 +35,23 @@ NS_ASSUME_NONNULL_BEGIN
  */
 + (NSDictionary<NSString *, NSString *> *)methodInvokeMapper;
 
-- (instancetype)initWithEngine:(KKJSBridgeEngine *)engine context:(id)context; // 模块初始化，适合用于需要借助外部环境才能调用 API 的场景
-- (NSOperationQueue * _Nullable)methodInvokeQueue; // 方法调用 queue。默认是 mainQueue，当考虑性能原因时，外部可以指定方法调用的自定义 queue。
+/// 修复参数
+///
+/// 之前的参数，可能是按照顺序摆放，并没有key，如果统一使用 JSON 格式，简单点的做法可以 index 为key，
+/// 这样 {0: 'someTitle', 1: 'someUrl'} 需要自己转一层，可以在这个方法实现将参数转成{title: 'someTitle', url: 'someUrl'}
+///
+/// @Note 如果是同步消息，并且判断出没有通过callback返回值的情况，可以直接叫过 callback 并置空。
+///
+/// @param method 方法名称
+/// @param message 消息体
+/// @return 是否可以继续执行
+- (BOOL)fixParametersIfNeededForMethod:(NSString *)method message:(KKJSBridgeMessage *)message;
+
+/// 模块初始化，适合用于需要借助外部环境才能调用 API 的场景
+- (instancetype)initWithEngine:(KKJSBridgeEngine *)engine context:(id)context;
+
+/// 方法调用 queue。默认是 mainQueue，当考虑性能原因时，外部可以指定方法调用的自定义 queue。
+- (NSOperationQueue * _Nullable)methodInvokeQueue;
 
 @end
 
