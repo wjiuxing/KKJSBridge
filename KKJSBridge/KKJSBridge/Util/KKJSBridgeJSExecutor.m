@@ -51,6 +51,23 @@
     [self evaluateJavaScript:jsString inWebView:webView completionHandler:completionHandler];
 }
 
++ (void)evaluateJavaScriptFunction:(NSString *)function withArgs:(NSArray *)args inWebView:(WKWebView *)webView completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler {
+    if (0 == args.count) {
+        NSString *jsString = [NSString stringWithFormat:@"%@()", function];
+        return [self evaluateJavaScript:jsString inWebView:webView completionHandler:completionHandler];
+    }
+    
+    NSData *data = [NSJSONSerialization dataWithJSONObject:args options:kNilOptions error:nil];
+    NSString *argsFragment = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    argsFragment = [argsFragment substringWithRange:(NSRange) {
+        .location = 1,
+        .length = argsFragment.length - 2
+    }];
+    
+    NSString *jsString = [NSString stringWithFormat:@"%@(%@)", function, argsFragment];
+    return [self evaluateJavaScript:jsString inWebView:webView completionHandler:completionHandler];
+}
+
 #pragma mark - util
 + (NSString *)jsSerializeWithJson:(NSDictionary * _Nullable)json {
     NSString *messageJSON = [self serializeWithJson:json ? json : @{} pretty:NO];
