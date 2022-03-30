@@ -49,7 +49,7 @@ NS_ASSUME_NONNULL_BEGIN
  4、从 binarycookies 文件的解析结果可以看到 Session Cookie(没有设置 expires) 是不会持久化的。
  
  */
-@interface KKWebView : WKWebView
+@interface KKWebView : WKWebView <WKNavigationDelegate>
 
 @end
 
