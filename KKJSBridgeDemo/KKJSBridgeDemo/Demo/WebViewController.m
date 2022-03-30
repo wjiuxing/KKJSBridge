@@ -15,7 +15,7 @@
 #import "ModuleC.h"
 #import "ModuleDefault.h"
 
-@interface WebViewController ()<KKWebViewDelegate>
+@interface WebViewController () <KKWebViewDelegate, WKUIDelegate>
 
 @property (nonatomic, strong, readwrite) KKWebView *webView;
 @property (nonatomic, copy, readwrite) NSString *url;
@@ -69,6 +69,7 @@
 - (void)commonInit {
     _webView = [[KKWebViewPool sharedInstance] dequeueWebViewWithClass:KKWebView.class webViewHolder:self];
     _webView.navigationDelegate = self;
+    _webView.UIDelegate = self;
     _jsBridgeEngine = [KKJSBridgeEngine bridgeForWebView:self.webView];
     _jsBridgeEngine.config.enableAjaxHook = YES;
     _jsBridgeEngine.bridgeReadyCallback = ^(KKJSBridgeEngine * _Nonnull engine) {
@@ -220,6 +221,21 @@
      解决内存过大引起的白屏问题
      */
     [self.webView reload];
+}
+
+
+#pragma mark -
+#pragma mark WKUIDelegate
+
+- (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler
+{
+    UIAlertController *alertController =
+    [UIAlertController alertControllerWithTitle:@"这是一个来自VC的弹框" message:message preferredStyle:UIAlertControllerStyleAlert];
+    [alertController addAction:[UIAlertAction actionWithTitle:@"确认" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_Nonnull action) {
+        completionHandler();
+    }]];
+    
+    [self presentViewController:alertController animated:YES completion:nil];
 }
 
 @end

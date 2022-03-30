@@ -15,8 +15,11 @@
 
 @interface KKWebView() <WKUIDelegate>
 
-/// A real delegate of the class.
+/// A real WKNavigationDelegate of the class.
 @property (nonatomic, weak) id<WKNavigationDelegate> realNavigationDelegate;
+
+/// A real WKUIDelegate of the class.
+@property (nonatomic, weak) id<WKUIDelegate> realUIDelegate;
 
 @end
 
@@ -133,11 +136,18 @@
 }
 
 #pragma mark - WKUIDelegate
+
 // 创建一个新的 webView
 - (nullable WKWebView *)webView:(WKWebView *)webView createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration forNavigationAction:(WKNavigationAction *)navigationAction windowFeatures:(WKWindowFeatures *)windowFeatures {
     if (!navigationAction.targetFrame.isMainFrame) {// 针对 <a target="_blank" href="" > 做处理。同时也会同步 cookie， 保持 loadRequest 加载请求携带 cookie 的一致性。
         [webView loadRequest:[KKWebViewCookieManager fixRequest:navigationAction.request]];
     }
+    
+    id<WKUIDelegate> mainDelegate = self.realUIDelegate;
+    if ([mainDelegate respondsToSelector:@selector(webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:)]) {
+        return [mainDelegate webView:webView createWebViewWithConfiguration:configuration forNavigationAction:navigationAction windowFeatures:windowFeatures];
+    }
+    
     return nil;
 }
 
@@ -146,6 +156,11 @@
     if (![self canShowPanelWithWebView:webView]) {
         completionHandler();
         return;
+    }
+    
+    id<WKUIDelegate> mainDelegate = self.realUIDelegate;
+    if ([mainDelegate respondsToSelector:@selector(webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:)]) {
+        return [mainDelegate webView:webView runJavaScriptAlertPanelWithMessage:message initiatedByFrame:frame completionHandler:completionHandler];
     }
     
     UIAlertController *alertController =
@@ -170,6 +185,11 @@
     if (![self canShowPanelWithWebView:webView]) {
         completionHandler(NO);
         return;
+    }
+    
+    id<WKUIDelegate> mainDelegate = self.realUIDelegate;
+    if ([mainDelegate respondsToSelector:@selector(webView:runJavaScriptConfirmPanelWithMessage:initiatedByFrame:completionHandler:)]) {
+        return [mainDelegate webView:webView runJavaScriptConfirmPanelWithMessage:message initiatedByFrame:frame completionHandler:completionHandler];
     }
     
     UIAlertController *alertController =
@@ -206,6 +226,11 @@
     // 处理来自 KKJSBridge 的同步调用
     if ([self handleSyncCallWithPrompt:prompt defaultText:defaultText completionHandler:completionHandler]) {
         return;
+    }
+    
+    id<WKUIDelegate> mainDelegate = self.realUIDelegate;
+    if ([mainDelegate respondsToSelector:@selector(webView:runJavaScriptTextInputPanelWithPrompt:defaultText:initiatedByFrame:completionHandler:)]) {
+        return [mainDelegate webView:webView runJavaScriptTextInputPanelWithPrompt:prompt defaultText:defaultText initiatedByFrame:frame completionHandler:completionHandler];
     }
     
     NSString *hostString = webView.URL.host;
@@ -274,7 +299,7 @@
 
 
 #pragma mark -
-#pragma mark WKNavigationDelegate Forwarder
+#pragma mark WKNavigationDelegate & WKUIDelegate Forwarder
 
 - (void)setNavigationDelegate:(id<WKNavigationDelegate>)navigationDelegate
 {
@@ -282,21 +307,36 @@
     super.navigationDelegate = navigationDelegate ? self : nil;
 }
 
+- (void)setUIDelegate:(id<WKUIDelegate>)UIDelegate
+{
+    self.realUIDelegate = (UIDelegate != self ? UIDelegate : nil);
+    super.UIDelegate = UIDelegate ? self : nil;
+}
+
 - (BOOL)respondsToSelector:(SEL)aSelector
 {
-    return [super respondsToSelector:aSelector] || [_realNavigationDelegate respondsToSelector:aSelector];
+    return ([super respondsToSelector:aSelector]
+            || [_realNavigationDelegate respondsToSelector:aSelector]
+            || [_realUIDelegate respondsToSelector:aSelector]);
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [super methodSignatureForSelector:aSelector] ?: [(id)_realNavigationDelegate methodSignatureForSelector:aSelector];
+    return ([super methodSignatureForSelector:aSelector]
+            ?: [(id)_realNavigationDelegate methodSignatureForSelector:aSelector]
+            ?: [(id)_realUIDelegate methodSignatureForSelector:aSelector]);
 }
 
 - (void)forwardInvocation:(NSInvocation *)invocation
 {
     id delegate = _realNavigationDelegate;
     if ([delegate respondsToSelector:invocation.selector]) {
-        [invocation invokeWithTarget:delegate];
+        return [invocation invokeWithTarget:delegate];
+    }
+    
+    delegate = _realUIDelegate;
+    if ([delegate respondsToSelector:invocation.selector]) {
+        return [invocation invokeWithTarget:delegate];
     }
 }
 
