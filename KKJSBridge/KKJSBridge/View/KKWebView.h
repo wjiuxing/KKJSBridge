@@ -51,6 +51,9 @@ NS_ASSUME_NONNULL_BEGIN
  */
 @interface KKWebView : WKWebView <WKNavigationDelegate>
 
+/// 禁止首次请求同步 cookie，见 loadRequest: 方法
+@property (nonatomic, assign) BOOL disableCookieSyncWhenLoadRequest;
+
 @end
 
 NS_ASSUME_NONNULL_END
