@@ -285,6 +285,10 @@
 }
 
 - (BOOL)canShowPanelWithWebView:(WKWebView *)webView {
+    if (nil == webView.window) {
+        return NO;
+    }
+    
     if ([webView.holderObject isKindOfClass:[UIViewController class]]) {
         UIViewController *vc = (UIViewController *)webView.holderObject;
         if (vc.isBeingPresented || vc.isBeingDismissed || vc.isMovingToParentViewController || vc.isMovingFromParentViewController) {
