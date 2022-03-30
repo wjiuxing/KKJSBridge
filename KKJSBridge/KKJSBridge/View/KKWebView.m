@@ -228,15 +228,15 @@
 }
 
 // webView 中的输入框
-- (void)webView:(WKWebView *)webView runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt defaultText:(nullable NSString *)defaultText initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSString * _Nullable result))completionHandler {
-    
-    if (![self canShowPanelWithWebView:webView]) {
-        completionHandler(nil);
+- (void)webView:(WKWebView *)webView runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt defaultText:(nullable NSString *)defaultText initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSString * _Nullable result))completionHandler
+{
+    // 处理来自 KKJSBridge 的同步调用
+    if ([self handleSyncCallWithPrompt:prompt defaultText:defaultText completionHandler:completionHandler]) {
         return;
     }
     
-    // 处理来自 KKJSBridge 的同步调用
-    if ([self handleSyncCallWithPrompt:prompt defaultText:defaultText completionHandler:completionHandler]) {
+    if (![self canShowPanelWithWebView:webView]) {
+        completionHandler(nil);
         return;
     }
     
