@@ -128,13 +128,16 @@
 // 3、页面跳转完成时调用
 - (void)webView:(WKWebView *)webView didFinishNavigation:(null_unspecified WKNavigation *)navigation {
     id<WKNavigationDelegate> mainDelegate = self.realNavigationDelegate;
-    
     if ([mainDelegate respondsToSelector:@selector(webView:didFinishNavigation:)]) {
         [mainDelegate webView:webView didFinishNavigation:navigation];
     }
     
-    // 预加载下一个 WebView
-    [self prepareNextWebViewIfNeed];
+    if (webView.recycling) {
+        webView.recycling = NO;
+    } else {
+        // 预加载下一个 WebView
+        [self prepareNextWebViewIfNeed];
+    }
 }
 
 // 4、需要校验服务器可信度时调用

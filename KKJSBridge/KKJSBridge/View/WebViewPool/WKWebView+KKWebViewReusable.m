@@ -56,9 +56,22 @@
     return invalidNum.boolValue;
 }
 
+- (void)setRecycling:(BOOL)recycling
+{
+    objc_setAssociatedObject(self, @selector(recycling), @(recycling), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (BOOL)recycling
+{
+    NSNumber *result = objc_getAssociatedObject(self, @selector(recycling));
+    return result.boolValue;
+}
+
+
 #pragma mark -
 
 - (void)componentViewWillLeavePool {
+    self.recycling = NO;
     self.reusedTimes += 1;
     [self _clearBackForwardList];
 }
@@ -66,6 +79,7 @@
 - (void)componentViewWillEnterPool {
     self.holderObject = nil;
     self.kk_engine = nil;
+    self.recycling = YES;
     self.hidden = NO;
     self.scrollView.delegate = nil;
     self.scrollView.scrollEnabled = YES;

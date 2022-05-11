@@ -24,6 +24,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign, readwrite) NSInteger reusedTimes;
 @property (nonatomic, assign, readwrite) BOOL invalid;
 
+/// 正在被回收利用
+@property (nonatomic, assign) BOOL recycling;
+
 - (void)componentViewWillLeavePool __attribute__((objc_requires_super));   //即将离开回收池
 - (void)componentViewWillEnterPool __attribute__((objc_requires_super));   //即将进入回收池
 
