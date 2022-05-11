@@ -11,8 +11,8 @@
 
 @interface KKWebViewPool ()
 @property (nonatomic, strong, readwrite) dispatch_semaphore_t lock;
-@property (nonatomic, strong, readwrite) NSMutableDictionary<NSString *, NSMutableSet< __kindof WKWebView *> *> *dequeueWebViews;
-@property (nonatomic, strong, readwrite) NSMutableDictionary<NSString *, NSMutableSet< __kindof WKWebView *> *> *enqueueWebViews;
+@property (nonatomic, strong, readwrite) NSMutableDictionary<NSString *, NSMutableArray< __kindof WKWebView *> *> *dequeueWebViews;
+@property (nonatomic, strong, readwrite) NSMutableDictionary<NSString *, NSMutableArray< __kindof WKWebView *> *> *enqueueWebViews;
 @property (nonatomic, copy) void(^makeWebViewConfigurationBlock)(WKWebViewConfiguration *configuration);
 @end
 
@@ -82,25 +82,18 @@
 #endif
     }
 
-    dispatch_semaphore_wait(_lock, DISPATCH_TIME_FOREVER);
-    __kindof WKWebView *webView;
     NSString *webViewClassString = NSStringFromClass(webViewClass);
     
-    if ([[_enqueueWebViews allKeys] containsObject:webViewClassString]) {
-        NSMutableSet *viewSet =  [_enqueueWebViews objectForKey:webViewClassString];
-        
-        if (viewSet.count < [KKWebViewPool sharedInstance].webViewMaxReuseCount) {
-            webView = [self generateInstanceWithWebViewClass:webViewClass];
-            [viewSet addObject:webView];
-        } else {
+    dispatch_semaphore_wait(_lock, DISPATCH_TIME_FOREVER); {
+        NSMutableArray *enqueue = _enqueueWebViews[webViewClassString];
+        if (nil == enqueue) {
+            _enqueueWebViews[webViewClassString] = enqueue = [NSMutableArray array];
         }
-    } else {
-        NSMutableSet *viewSet = [[NSSet set] mutableCopy];
-        webView = [self generateInstanceWithWebViewClass:webViewClass];
-        [viewSet addObject:webView];
-        [_enqueueWebViews setValue:viewSet forKey:webViewClassString];
-    }
-    dispatch_semaphore_signal(_lock);
+        
+        if (enqueue.count < [KKWebViewPool sharedInstance].webViewMaxReuseCount) {
+            [enqueue addObject:[self generateInstanceWithWebViewClass:webViewClass]];
+        }
+    } dispatch_semaphore_signal(_lock);
 }
 
 - (void)enqueueWebView:(__kindof WKWebView *)webView {
@@ -120,8 +113,8 @@
 
 - (void)reloadAllReusableWebViews {
     dispatch_semaphore_wait(_lock, DISPATCH_TIME_FOREVER);
-    for (NSMutableSet *viewSet in _enqueueWebViews.allValues) {
-        for (__kindof WKWebView *webView in viewSet) {
+    for (NSArray *views in _enqueueWebViews.allValues) {
+        for (__kindof WKWebView *webView in views) {
             [webView componentViewWillEnterPool];
         }
     }
@@ -145,20 +138,15 @@
     if ([webView respondsToSelector:@selector(componentViewWillEnterPool)]) {
         [webView componentViewWillEnterPool];
     }
-    dispatch_semaphore_wait(_lock, DISPATCH_TIME_FOREVER);
 
     NSString *webViewClassString = NSStringFromClass([webView class]);
-
-    if ([[_dequeueWebViews allKeys] containsObject:webViewClassString]) {
-        NSMutableSet *viewSet =  [_dequeueWebViews objectForKey:webViewClassString];
-        [viewSet removeObject:webView];
-    }
-
-    if ([[_enqueueWebViews allKeys] containsObject:webViewClassString]) {
-        NSMutableSet *viewSet =  [_enqueueWebViews objectForKey:webViewClassString];
-        [viewSet removeObject:webView];
-    }
-    dispatch_semaphore_signal(_lock);
+    dispatch_semaphore_wait(_lock, DISPATCH_TIME_FOREVER); {
+        NSMutableArray *dequeue = _dequeueWebViews[webViewClassString];
+        [dequeue removeObject:webView];
+        
+        NSMutableArray *enqueue = _enqueueWebViews[webViewClassString];
+        [enqueue removeObject:webView];
+    } dispatch_semaphore_signal(_lock);
 }
 
 - (void)clearAllReusableWebViewsWithClass:(Class)webViewClass {
@@ -169,20 +157,16 @@
     }
 
     dispatch_semaphore_wait(_lock, DISPATCH_TIME_FOREVER);
-    if ([[_enqueueWebViews allKeys] containsObject:webViewClassString]) {
-        [_enqueueWebViews removeObjectForKey:webViewClassString];
-    }
+    [_enqueueWebViews removeObjectForKey:webViewClassString];
     dispatch_semaphore_signal(_lock);
 }
 
 - (BOOL)containsReusableWebViewWithClass:(Class)webViewClass {
-    dispatch_semaphore_wait(_lock, DISPATCH_TIME_FOREVER);
     NSString *webViewClassString = NSStringFromClass(webViewClass);
     
-    BOOL contains = NO;
-    if ([[_dequeueWebViews allKeys] containsObject:webViewClassString] || [[_enqueueWebViews allKeys] containsObject:webViewClassString]) {
-        contains = YES;
-    }
+    dispatch_semaphore_wait(_lock, DISPATCH_TIME_FOREVER);
+    BOOL contains = (nil != _dequeueWebViews[webViewClassString]
+                     || nil != _enqueueWebViews[webViewClassString]);
     dispatch_semaphore_signal(_lock);
     
     return contains;
@@ -190,13 +174,13 @@
 
 - (__kindof WKWebView *)reusableWebViewWithPointer:(long long)address dequeued:(nullable BOOL *)dequeued;
 {
-    WKWebView *(^cherryPick)(NSDictionary<NSString *, NSSet<WKWebView *> *> *) = ^WKWebView *(NSDictionary<NSString *, NSSet<WKWebView *> *> *map) {
+    WKWebView *(^cherryPick)(NSDictionary<NSString *, NSArray<WKWebView *> *> *) = ^WKWebView *(NSDictionary<NSString *, NSArray<WKWebView *> *> *map) {
         __block WKWebView *webView = nil;
-        NSArray<NSSet<__kindof WKWebView *> *> *dequeues = map.allValues;
-        [dequeues enumerateObjectsUsingBlock:^(NSSet<__kindof WKWebView *> * _Nonnull set, NSUInteger idx, BOOL * _Nonnull stop0) {
-            [set enumerateObjectsUsingBlock:^(__kindof WKWebView * _Nonnull obj, BOOL * _Nonnull stop1) {
-                if (((long long)obj) == address) {
-                    webView = obj;
+        NSArray<NSArray<__kindof WKWebView *> *> *dequeues = map.allValues;
+        [dequeues enumerateObjectsUsingBlock:^(NSArray<__kindof WKWebView *> * _Nonnull views, NSUInteger idx, BOOL * _Nonnull stop0) {
+            [views enumerateObjectsUsingBlock:^(__kindof WKWebView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop1) {
+                if (((long long)view) == address) {
+                    webView = view;
                     *stop0 = *stop1 = YES;
                 }
             }];
@@ -219,14 +203,16 @@
 #pragma mark - private method
 
 - (void)_tryCompactWeakHolderOfWebView {
-    NSDictionary *dequeueWebViewsTmp = _dequeueWebViews.copy;
-    if (dequeueWebViewsTmp && dequeueWebViewsTmp.count > 0) {
-        for (NSMutableSet *viewSet in dequeueWebViewsTmp.allValues) {
-            NSSet *webViewSetTmp = viewSet.copy;
-            for (__kindof WKWebView *webView in webViewSetTmp) {
-                if (!webView.holderObject) {
-                    [self enqueueWebView:webView];
-                }
+    if (0 == _dequeueWebViews.count) {
+        return;
+    }
+    
+    NSDictionary *dequeueWebViewsTmp = [_dequeueWebViews copy];
+    for (NSMutableArray *views in dequeueWebViewsTmp.allValues) {
+        NSArray *viewsTmp = [views copy];
+        for (__kindof WKWebView *webView in viewsTmp) {
+            if (nil == webView.holderObject) {
+                [self enqueueWebView:webView];
             }
         }
     }
@@ -242,32 +228,27 @@
         [webView componentViewWillEnterPool];
     }
 
-    dispatch_semaphore_wait(_lock, DISPATCH_TIME_FOREVER);
     NSString *webViewClassString = NSStringFromClass([webView class]);
-    if ([[_dequeueWebViews allKeys] containsObject:webViewClassString]) {
-        NSMutableSet *viewSet =  [_dequeueWebViews objectForKey:webViewClassString];
-        [viewSet removeObject:webView];
-    } else {
-        dispatch_semaphore_signal(_lock);
-#ifdef DEBUG
-        NSLog(@"KKWebViewPool recycle invalid view");
-#endif
-    }
     
-    if ([[_enqueueWebViews allKeys] containsObject:webViewClassString]) {
-        NSMutableSet *viewSet =  [_enqueueWebViews objectForKey:webViewClassString];
-        
-        if (viewSet.count < [KKWebViewPool sharedInstance].webViewMaxReuseCount) {
-            [viewSet addObject:webView];
+    dispatch_semaphore_wait(_lock, DISPATCH_TIME_FOREVER); {
+        NSMutableArray *dequeue = _dequeueWebViews[webViewClassString];
+        if (dequeue.count > 0) {
+            [dequeue removeObject:webView];
         } else {
+#ifdef DEBUG
+            NSLog(@"KKWebViewPool recycle invalid view");
+#endif
         }
-    } else {
-        NSMutableSet *viewSet = [[NSSet set] mutableCopy];
-        [viewSet addObject:webView];
-        [_enqueueWebViews setValue:viewSet forKey:webViewClassString];
-    }
-
-    dispatch_semaphore_signal(_lock);
+        
+        NSMutableArray *enqueue = _enqueueWebViews[webViewClassString];
+        if (nil == enqueue) {
+            _enqueueWebViews[webViewClassString] = enqueue = [NSMutableArray array];
+        }
+        
+        if (enqueue.count < [KKWebViewPool sharedInstance].webViewMaxReuseCount) {
+            [enqueue addObject:webView];
+        }
+    } dispatch_semaphore_signal(_lock);
 }
 
 - (__kindof WKWebView *)_getWebViewWithClass:(Class)webViewClass {
@@ -278,36 +259,27 @@
     }
 
     __kindof WKWebView *webView;
-
-    dispatch_semaphore_wait(_lock, DISPATCH_TIME_FOREVER);
-
-    if ([[_enqueueWebViews allKeys] containsObject:webViewClassString]) {
-        NSMutableSet *viewSet =  [_enqueueWebViews objectForKey:webViewClassString];
-        if (viewSet && viewSet.count > 0) {
-            webView = [viewSet anyObject];
-            if (![webView isMemberOfClass:webViewClass]) {
-#ifdef DEBUG
-                NSLog(@"KKWebViewPool webViewClassString: %@ already has webview of class:%@, params is %@", webViewClassString, NSStringFromClass([webView class]), NSStringFromClass(webViewClass));
-#endif
-                return nil;
-            }
-            [viewSet removeObject:webView];
+    dispatch_semaphore_wait(_lock, DISPATCH_TIME_FOREVER); {
+        NSMutableArray *enqueue = _enqueueWebViews[webViewClassString];
+        webView = enqueue.firstObject;
+        if (nil == webView) {
+            webView = [self generateInstanceWithWebViewClass:webViewClass];
+        } else if (![webView isMemberOfClass:webViewClass]) {
+    #ifdef DEBUG
+            NSLog(@"KKWebViewPool webViewClassString: %@ already has webview of class:%@, params is %@", webViewClassString, NSStringFromClass([webView class]), NSStringFromClass(webViewClass));
+    #endif
+            dispatch_semaphore_signal(_lock);
+            return nil;
+        } else {
+            [enqueue removeObjectAtIndex:0];
         }
-    }
-
-    if (!webView) {
-        webView = [self generateInstanceWithWebViewClass:webViewClass];
-    }
-
-    if ([[_dequeueWebViews allKeys] containsObject:webViewClassString]) {
-        NSMutableSet *viewSet =  [_dequeueWebViews objectForKey:webViewClassString];
-        [viewSet addObject:webView];
-    } else {
-        NSMutableSet *viewSet = [[NSSet set] mutableCopy];
-        [viewSet addObject:webView];
-        [_dequeueWebViews setValue:viewSet forKey:webViewClassString];
-    }
-    dispatch_semaphore_signal(_lock);
+        
+        NSMutableArray *dequeue = _dequeueWebViews[webViewClassString];
+        if (nil == dequeue) {
+            _dequeueWebViews[webViewClassString] = dequeue = [NSMutableArray array];
+        }
+        [dequeue addObject:webView];
+    } dispatch_semaphore_signal(_lock);
 
     //出回收池前初始化
     if ([webView respondsToSelector:@selector(componentViewWillLeavePool)]) {
