@@ -18,6 +18,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (KKWebViewPool *)sharedInstance;
 
+/// webView 最小缓存数量，默认为1个。
+@property (nonatomic, assign, readwrite) NSInteger webViewMinReuseCount;
+
 /**
  webView最大缓存数量
  默认为5个
