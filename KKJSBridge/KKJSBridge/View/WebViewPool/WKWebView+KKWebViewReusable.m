@@ -7,6 +7,7 @@
 //
 
 #import "WKWebView+KKWebViewReusable.h"
+#import "WKWebView+KKWebContentProcessTerminatedExtension.h"
 #import <objc/runtime.h>
 #import "KKWebViewPool.h"
 #import "WKWebView+KKJSBridgeEngine.h"
@@ -72,6 +73,7 @@
 
 - (void)componentViewWillLeavePool {
     self.recycling = NO;
+    self.contentProcessTerminated = NO;
     self.reusedTimes += 1;
     [self _clearBackForwardList];
 }

@@ -11,6 +11,7 @@
 #import "KKJSBridgeEngine.h"
 #import "WKWebView+KKWebViewReusable.h"
 #import "WKWebView+KKJSBridgeEngine.h"
+#import "WKWebView+KKWebContentProcessTerminatedExtension.h"
 #import "KKWebViewCookieManager.h"
 
 @interface KKWebView() <WKUIDelegate>
@@ -132,6 +133,7 @@
         [mainDelegate webView:webView didFinishNavigation:navigation];
     }
     
+    webView.contentProcessTerminated = NO;
     if (webView.recycling) {
         webView.recycling = NO;
     } else {
@@ -149,6 +151,17 @@
         completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
     }
 }
+
+- (void)webViewWebContentProcessDidTerminate:(WKWebView *)webView
+{
+    self.contentProcessTerminated = YES;
+    
+    id<WKNavigationDelegate> mainDelegate = self.realNavigationDelegate;
+    if ([mainDelegate respondsToSelector:@selector(webViewWebContentProcessDidTerminate:)]) {
+        [mainDelegate webViewWebContentProcessDidTerminate:webView];
+    }
+}
+
 
 #pragma mark - WKUIDelegate
 
