@@ -94,6 +94,11 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (BOOL)containsReusableWebViewWithClass:(Class)webViewClass;
 
+/// 根据地址，从回收池中取出 WebView
+/// @param address WebView 地址
+/// @param dequeued 是否被出队使用
+- (__kindof WKWebView *)reusableWebViewWithPointer:(long long)address dequeued:(nullable BOOL *)dequeued;
+
 @end
 
 NS_ASSUME_NONNULL_END

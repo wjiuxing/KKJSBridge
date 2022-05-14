@@ -188,6 +188,34 @@
     return contains;
 }
 
+- (__kindof WKWebView *)reusableWebViewWithPointer:(long long)address dequeued:(nullable BOOL *)dequeued;
+{
+    WKWebView *(^cherryPick)(NSDictionary<NSString *, NSSet<WKWebView *> *> *) = ^WKWebView *(NSDictionary<NSString *, NSSet<WKWebView *> *> *map) {
+        __block WKWebView *webView = nil;
+        NSArray<NSSet<__kindof WKWebView *> *> *dequeues = map.allValues;
+        [dequeues enumerateObjectsUsingBlock:^(NSSet<__kindof WKWebView *> * _Nonnull set, NSUInteger idx, BOOL * _Nonnull stop0) {
+            [set enumerateObjectsUsingBlock:^(__kindof WKWebView * _Nonnull obj, BOOL * _Nonnull stop1) {
+                if (((long long)obj) == address) {
+                    webView = obj;
+                    *stop0 = *stop1 = YES;
+                }
+            }];
+        }];
+        return webView;
+    };
+    
+    WKWebView *webView = nil;
+    dispatch_semaphore_wait(_lock, DISPATCH_TIME_FOREVER); {
+        if (nil == (webView = cherryPick(_dequeueWebViews))) {
+            webView = cherryPick(_enqueueWebViews);
+        } else if (NULL != dequeued) {
+            *dequeued = YES;
+        }
+    } dispatch_semaphore_signal(_lock);
+    
+    return webView;
+}
+
 #pragma mark - private method
 
 - (void)_tryCompactWeakHolderOfWebView {
