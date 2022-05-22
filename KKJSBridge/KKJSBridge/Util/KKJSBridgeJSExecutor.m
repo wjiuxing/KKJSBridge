@@ -80,6 +80,32 @@
     return [self evaluateJavaScript:jsString inWebView:webView completionHandler:completionHandler];
 }
 
++ (void)evaluateJavaScriptFunction:(NSString *)function withObject:(id)object inWebView:(WKWebView *)webView completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler {
+    if (0 == function.length) {
+#ifdef DEBUG
+        NSLog(@"KKJSBridge Error: evaluateJavaScriptFunction: does not support this function %@", function);
+#endif
+        return;
+    }
+    
+    if ([object isKindOfClass:NSString.class]) {
+        [self evaluateJavaScriptFunction:function withString:object inWebView:webView completionHandler:completionHandler];
+    } else if ([object isKindOfClass:NSNumber.class]) {
+        [self evaluateJavaScriptFunction:function withNumber:object inWebView:webView completionHandler:completionHandler];
+    } else if ([object isKindOfClass:NSDictionary.class]) {
+        [self evaluateJavaScriptFunction:function withDictionary:object inWebView:webView completionHandler:completionHandler];
+    } else if ([object isKindOfClass:NSArray.class]) {
+        [self evaluateJavaScriptFunction:function withArray:object inWebView:webView completionHandler:completionHandler];
+    } else if (nil == object) {
+        NSString *js = [function stringByAppendingString:@"()"];
+        [self evaluateJavaScript:js inWebView:webView completionHandler:completionHandler];
+    } else {
+#ifdef DEBUG
+        NSLog(@"KKJSBridge Error: evaluateJavaScriptFunction: %@, does not support this type of object: %@", function, object);
+#endif
+    }
+}
+
 #pragma mark - util
 + (NSString *)jsSerializeWithJson:(NSDictionary * _Nullable)json {
     if (0 == json.count) {
