@@ -15,6 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (void)evaluateJavaScript:(NSString *)javaScriptString inWebView:(WKWebView *)webView completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler;
 + (void)evaluateJavaScriptFunction:(NSString *)function withJson:(NSDictionary *)json inWebView:(WKWebView *)webView completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler;
++ (void)evaluateJavaScriptFunction:(NSString *)function withDictionary:(NSDictionary *)dictionary inWebView:(WKWebView *)webView completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler;
++ (void)evaluateJavaScriptFunction:(NSString *)function withArray:(NSArray *)array inWebView:(WKWebView *)webView completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler;
 + (void)evaluateJavaScriptFunction:(NSString *)function withString:(NSString *)string inWebView:(WKWebView *)webView completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler;
 + (void)evaluateJavaScriptFunction:(NSString *)function withNumber:(NSNumber *)number inWebView:(WKWebView *)webView completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler;
 + (void)evaluateJavaScriptFunction:(NSString *)function withArgs:(NSArray *)args inWebView:(WKWebView *)webView completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler;

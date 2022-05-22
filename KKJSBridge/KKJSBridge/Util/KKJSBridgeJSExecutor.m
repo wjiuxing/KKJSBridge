@@ -41,6 +41,18 @@
     [self evaluateJavaScript:jsString inWebView:webView completionHandler:completionHandler];
 }
 
++ (void)evaluateJavaScriptFunction:(NSString *)function withDictionary:(NSDictionary *)dictionary inWebView:(WKWebView *)webView completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler {
+    NSString *argsFragment = [self serializeWithJson:dictionary pretty:NO];
+    NSString *jsString = [NSString stringWithFormat:@"%@(%@)", function, argsFragment];
+    [self evaluateJavaScript:jsString inWebView:webView completionHandler:completionHandler];
+}
+
++ (void)evaluateJavaScriptFunction:(NSString *)function withArray:(NSArray *)array inWebView:(WKWebView *)webView completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler {
+    NSString *argsFragment = [self serializeWithArray:array pretty:NO];
+    NSString *jsString = [NSString stringWithFormat:@"%@(%@)", function, argsFragment];
+    [self evaluateJavaScript:jsString inWebView:webView completionHandler:completionHandler];
+}
+
 + (void)evaluateJavaScriptFunction:(NSString *)function withString:(NSString *)string inWebView:(WKWebView *)webView completionHandler:(void (^ _Nullable)(_Nullable id result, NSError * _Nullable error))completionHandler {
     NSString *jsString = [NSString stringWithFormat:@"%@('%@')", function, string];
     [self evaluateJavaScript:jsString inWebView:webView completionHandler:completionHandler];
@@ -70,29 +82,63 @@
 
 #pragma mark - util
 + (NSString *)jsSerializeWithJson:(NSDictionary * _Nullable)json {
-    NSString *messageJSON = [self serializeWithJson:json ? json : @{} pretty:NO];
-    messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\\" withString:@"\\\\"];
-    messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\"" withString:@"\\\""];
-    messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\'" withString:@"\\\'"];
-    messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\n" withString:@"\\n"];
-    messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\r" withString:@"\\r"];
-    messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\f" withString:@"\\f"];
-    messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\u2028" withString:@"\\u2028"];
-    messageJSON = [messageJSON stringByReplacingOccurrencesOfString:@"\u2029" withString:@"\\u2029"];
-    
-    return messageJSON;
+    if (0 == json.count) {
+        return @"{}";
+    }
+
+    NSMutableString *JSON = [[self serializeWithJson:json pretty:NO] mutableCopy];
+    [JSON replaceOccurrencesOfString:@"\\" withString:@"\\\\" options:0 range:(NSRange) { .length = JSON.length }];
+    [JSON replaceOccurrencesOfString:@"\"" withString:@"\\\"" options:0 range:(NSRange) { .length = JSON.length }];
+    [JSON replaceOccurrencesOfString:@"\'" withString:@"\\\'" options:0 range:(NSRange) { .length = JSON.length }];
+    [JSON replaceOccurrencesOfString:@"\n" withString:@"\\n" options:0 range:(NSRange) { .length = JSON.length }];
+    [JSON replaceOccurrencesOfString:@"\r" withString:@"\\r" options:0 range:(NSRange) { .length = JSON.length }];
+    [JSON replaceOccurrencesOfString:@"\f" withString:@"\\f" options:0 range:(NSRange) { .length = JSON.length }];
+    [JSON replaceOccurrencesOfString:@"\u2028" withString:@"\\u2028" options:0 range:(NSRange) { .length = JSON.length }];
+    [JSON replaceOccurrencesOfString:@"\u2029" withString:@"\\u2029" options:0 range:(NSRange) { .length = JSON.length }];
+    return JSON;
 }
 
 + (NSString *)serializeWithJson:(NSDictionary * _Nullable)json pretty:(BOOL)pretty {
     NSError *error = nil;
-    NSString *str = [[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:json ? json : @{} options:(NSJSONWritingOptions)(pretty ? NSJSONWritingPrettyPrinted : 0) error:&error] encoding:NSUTF8StringEncoding];
+    NSData *data = [NSJSONSerialization dataWithJSONObject:json ?: @{} options:(pretty ? NSJSONWritingPrettyPrinted : kNilOptions) error:&error];
 #ifdef DEBUG
     if (error) {
         NSLog(@"KKJSBridge Error: format json error %@", error.localizedDescription);
     }
 #endif
     
-    return str ? str : @"";
+    NSString *str = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    return str ?: @"";
+}
+
++ (NSString *)jsSerializeWithArray:(NSArray * _Nullable)array {
+    if (0 == array.count) {
+        return @"[]";
+    }
+    
+    NSMutableString *JSON = [[self serializeWithArray:array pretty:NO] mutableCopy];
+    [JSON replaceOccurrencesOfString:@"\\" withString:@"\\\\" options:0 range:(NSRange) { .length = JSON.length }];
+    [JSON replaceOccurrencesOfString:@"\"" withString:@"\\\"" options:0 range:(NSRange) { .length = JSON.length }];
+    [JSON replaceOccurrencesOfString:@"\'" withString:@"\\\'" options:0 range:(NSRange) { .length = JSON.length }];
+    [JSON replaceOccurrencesOfString:@"\n" withString:@"\\n" options:0 range:(NSRange) { .length = JSON.length }];
+    [JSON replaceOccurrencesOfString:@"\r" withString:@"\\r" options:0 range:(NSRange) { .length = JSON.length }];
+    [JSON replaceOccurrencesOfString:@"\f" withString:@"\\f" options:0 range:(NSRange) { .length = JSON.length }];
+    [JSON replaceOccurrencesOfString:@"\u2028" withString:@"\\u2028" options:0 range:(NSRange) { .length = JSON.length }];
+    [JSON replaceOccurrencesOfString:@"\u2029" withString:@"\\u2029" options:0 range:(NSRange) { .length = JSON.length }];
+    return JSON;
+}
+
++ (NSString *)serializeWithArray:(NSArray * _Nullable)array pretty:(BOOL)pretty {
+    NSError *error = nil;
+    NSData *data = [NSJSONSerialization dataWithJSONObject:array ?: @[] options:(pretty ? NSJSONWritingPrettyPrinted : kNilOptions) error:&error];
+#ifdef DEBUG
+    if (error) {
+        NSLog(@"KKJSBridge Error: format array error %@", error.localizedDescription);
+    }
+#endif
+    
+    NSString *str = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    return str ?: @"";
 }
 
 @end
