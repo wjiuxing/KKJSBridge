@@ -200,6 +200,22 @@
     return webView;
 }
 
+- (void)safelyEnumerateDequeuedWebView:(void (^)(__kindof WKWebView *webView, BOOL *stop))block;
+{
+    if (nil == block) {
+        return;
+    }
+    
+    dispatch_semaphore_wait(_lock, DISPATCH_TIME_FOREVER); {
+        [_dequeueWebViews enumerateKeysAndObjectsUsingBlock:^(NSString * _Nonnull key, NSMutableArray<__kindof WKWebView *> * _Nonnull webViews, BOOL * _Nonnull stop0) {
+            [webViews enumerateObjectsUsingBlock:^(__kindof WKWebView * _Nonnull webView, NSUInteger idx, BOOL * _Nonnull stop1) {
+                block(webView, stop1);
+                *stop0 = *stop1;
+            }];
+        }];
+    } dispatch_semaphore_signal(_lock);
+}
+
 #pragma mark - private method
 
 - (void)_tryCompactWeakHolderOfWebView {

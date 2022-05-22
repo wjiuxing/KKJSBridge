@@ -99,6 +99,10 @@ NS_ASSUME_NONNULL_BEGIN
 /// @param dequeued 是否被出队使用
 - (__kindof WKWebView *)reusableWebViewWithPointer:(long long)address dequeued:(nullable BOOL *)dequeued;
 
+/// 线程安全地遍历出队的 WebView
+/// @param block 访问每一个 WebView 的回调
+- (void)safelyEnumerateDequeuedWebView:(void (^)(__kindof WKWebView *webView, BOOL *stop))block;
+
 @end
 
 NS_ASSUME_NONNULL_END
