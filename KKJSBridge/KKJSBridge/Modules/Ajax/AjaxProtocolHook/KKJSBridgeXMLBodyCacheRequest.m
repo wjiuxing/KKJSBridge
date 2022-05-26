@@ -23,6 +23,10 @@ static KKJSBridgeSafeDictionary *bodyCache;
 + (void)initialize {
     if (self == [KKJSBridgeXMLBodyCacheRequest self]) {
         [NSURLProtocol registerClass:KKJSBridgeAjaxURLProtocol.class];
+        [KKJSBridgeConfig.protocolClasses enumerateObjectsUsingBlock:^(Class _Nonnull clazz, NSUInteger idx, BOOL * _Nonnull stop) {
+            [NSURLProtocol registerClass:clazz];
+        }];
+        
         bodyCache = [KKJSBridgeSafeDictionary new];
     }
 }

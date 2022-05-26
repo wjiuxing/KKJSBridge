@@ -57,6 +57,9 @@ NS_ASSUME_NONNULL_BEGIN
  */
 @property (class, nonatomic, weak) id<KKJSBridgeAjaxDelegateManager> ajaxDelegateManager;
 
+/// 提供接口注册业务的 NSURLProtocol，在内置的 KKJSBridgeAjaxURLProtocol 之后注册。
+@property (class, nonatomic, copy) NSArray<Class> *protocolClasses;
+
 @end
 
 NS_ASSUME_NONNULL_END
