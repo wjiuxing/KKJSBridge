@@ -75,6 +75,17 @@ static id<KKJSBridgeAjaxDelegateManager> globalAjaxDelegateManager;
     return globalAjaxDelegateManager;
 }
 
+static NSArray<Class> *_protocolClasses;
++ (NSArray<Class> *)protocolClasses
+{
+    return _protocolClasses;
+}
+
++ (void)setProtocolClasses:(NSArray<Class> *)protocolClasses
+{
+    _protocolClasses = [protocolClasses copy];
+}
+
 #pragma mark - private
 - (void)evaluateConfigScript:(NSString *)script {
     if (self.engine.isBridgeReady) {
