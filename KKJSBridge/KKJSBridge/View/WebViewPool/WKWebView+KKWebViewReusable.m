@@ -82,6 +82,7 @@
     self.holderObject = nil;
     self.kk_engine = nil;
     self.recycling = YES;
+    self.autoresizingMask = UIViewAutoresizingNone;
     self.hidden = NO;
     self.scrollView.delegate = nil;
     self.scrollView.scrollEnabled = YES;
