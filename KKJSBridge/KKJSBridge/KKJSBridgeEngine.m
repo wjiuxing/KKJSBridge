@@ -83,7 +83,17 @@ static NSString * const KKJSBridgeMessageName = @"KKJSBridgeMessage";
     }
     
     NSString *bridgeJSName = @"KKJSBridgeAJAXProtocolHook";
-#ifdef KKAjaxProtocolHook
+#ifdef KKUnity
+    switch (KKJSBridgeConfig.program) {
+        case KKWebViewProgramAjaxProtocolHook: {
+            bridgeJSName = @"KKJSBridgeAJAXProtocolHook";
+        } break;
+            
+        case KKWebViewProgramAjaxHook: {
+            bridgeJSName = @"KKJSBridgeAJAXHook";
+        } break;
+    }
+#elifdef KKAjaxProtocolHook
     bridgeJSName = @"KKJSBridgeAJAXProtocolHook";
 #else
     bridgeJSName = @"KKJSBridgeAJAXHook";
@@ -98,7 +108,17 @@ static NSString * const KKJSBridgeMessageName = @"KKJSBridgeMessage";
 }
 
 - (void)setupDefaultModuleRegister {
-#ifdef KKAjaxProtocolHook
+#ifdef KKUnity
+    switch (KKJSBridgeConfig.program) {
+        case KKWebViewProgramAjaxProtocolHook: {
+            [self.moduleRegister registerModuleClass:NSClassFromString(@"KKJSBridgeXMLBodyCacheRequest")];
+        } break;
+            
+        case KKWebViewProgramAjaxHook: {
+            [self.moduleRegister registerModuleClass:NSClassFromString(@"KKJSBridgeModuleXMLHttpRequestDispatcher")];
+        } break;
+    }
+#elifdef KKAjaxProtocolHook
     [self.moduleRegister registerModuleClass:NSClassFromString(@"KKJSBridgeXMLBodyCacheRequest")];
 #else
     [self.moduleRegister registerModuleClass:NSClassFromString(@"KKJSBridgeModuleXMLHttpRequestDispatcher")];

@@ -10,7 +10,7 @@
 #import "KKJSBridgeJSExecutor.h"
 #import "KKJSBridgeEngine.h"
 
-#ifdef KKAjaxProtocolHook
+#if defined (KKUnity) || defined (KKAjaxProtocolHook)
 #import "NSURLProtocol+KKJSBridgeWKWebView.h"
 #endif
 
@@ -38,7 +38,22 @@ static id<KKJSBridgeAjaxDelegateManager> globalAjaxDelegateManager;
 - (void)setEnableAjaxHook:(BOOL)enableAjaxHook {
     _enableAjaxHook = enableAjaxHook;
     
-#ifdef KKAjaxProtocolHook
+#ifdef KKUnity
+    switch (KKJSBridgeConfig.program) {
+        case KKWebViewProgramAjaxProtocolHook: {
+            if (enableAjaxHook) {
+                [NSURLProtocol KKJSBridgeRegisterScheme:@"https"];
+                [NSURLProtocol KKJSBridgeRegisterScheme:@"http"];
+            } else {
+                [NSURLProtocol KKJSBridgeUnregisterScheme:@"https"];
+                [NSURLProtocol KKJSBridgeUnregisterScheme:@"http"];
+            }
+        } break;
+            
+        default:
+            break;
+    }
+#elifdef KKAjaxProtocolHook
     if (enableAjaxHook) {
         [NSURLProtocol KKJSBridgeRegisterScheme:@"https"];
         [NSURLProtocol KKJSBridgeRegisterScheme:@"http"];
@@ -84,6 +99,24 @@ static NSArray<Class> *_protocolClasses;
 + (void)setProtocolClasses:(NSArray<Class> *)protocolClasses
 {
     _protocolClasses = [protocolClasses copy];
+}
+
+#if defined (KKUnity) || defined (KKAjaxProtocolHook)
+static KKWebViewProgram globalWebViewProgram = KKWebViewProgramAjaxProtocolHook;
+#else
+static KKWebViewProgram globalWebViewProgram = KKWebViewProgramAjaxHook;
+#endif
+
++ (KKWebViewProgram)program
+{
+    return globalWebViewProgram;
+}
+
++ (void)setProgram:(KKWebViewProgram)program
+{
+#ifdef KKUnity
+    globalWebViewProgram = program;
+#endif
 }
 
 #pragma mark - private
