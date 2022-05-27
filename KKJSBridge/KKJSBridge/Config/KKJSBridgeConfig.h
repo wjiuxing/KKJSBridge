@@ -12,6 +12,15 @@
 NS_ASSUME_NONNULL_BEGIN
 @class KKJSBridgeEngine;
 
+/// KKJSBridge 方案，运行时判断
+typedef NS_ENUM(unsigned char, KKWebViewProgram) {
+    /// 基于 KKAjaxProtocolHook 的方案
+    KKWebViewProgramAjaxProtocolHook,
+    
+    /// 基于 KKAjaxHook 的方案
+    KKWebViewProgramAjaxHook,
+};
+
 /**
  配置 JSBridge 的行为，统一管理 Native 和 H5 侧对 JSBridge 的配置。
  */
@@ -59,6 +68,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// 提供接口注册业务的 NSURLProtocol，在内置的 KKJSBridgeAjaxURLProtocol 之后注册。
 @property (class, nonatomic, copy) NSArray<Class> *protocolClasses;
+
+/// 方案，默认是 KKWebViewProgramAjaxProtocolHook
+@property (class, nonatomic, assign) KKWebViewProgram program;
 
 @end
 

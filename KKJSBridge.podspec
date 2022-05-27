@@ -42,7 +42,18 @@ Pod::Spec.new do |s|
     }
   end
 
-  s.default_subspecs = 'AjaxProtocolHook'
+  s.subspec 'Unity' do |sub|
+    sub.dependency "KKJSBridge/AjaxHook"
+    sub.dependency "KKJSBridge/AjaxProtocolHook"
+    sub.user_target_xcconfig = {
+        'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) KKUnity=1'
+    }
+    sub.pod_target_xcconfig = {
+        'GCC_PREPROCESSOR_DEFINITIONS' => 'KKUnity=1'
+    }
+  end
+
+  s.default_subspecs = 'Unity'
   s.frameworks = "WebKit", "UIKit"
   s.requires_arc = true
 
