@@ -93,6 +93,12 @@
     KKJSBridgeXMLHttpRequest *xhr = [self getXHR:engine.webView objectId:objectId];
     if (xhr) {
         [xhr send:params responseCallback:responseCallback];
+    } else {
+        // 延迟一下再处理：
+        // 在 iOS 12.4.1 系统中 ajax.send 先于 ajax.open/ajax.setRequestHeader 等方法被叫到
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [self send:engine params:params responseCallback:responseCallback];
+        });
     }
 }
 
