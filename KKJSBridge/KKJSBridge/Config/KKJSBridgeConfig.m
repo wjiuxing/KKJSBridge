@@ -44,9 +44,15 @@ static id<KKJSBridgeAjaxDelegateManager> globalAjaxDelegateManager;
             if (enableAjaxHook) {
                 [NSURLProtocol KKJSBridgeRegisterScheme:@"https"];
                 [NSURLProtocol KKJSBridgeRegisterScheme:@"http"];
+                [_customSchemes enumerateObjectsUsingBlock:^(NSString * _Nonnull scheme, NSUInteger idx, BOOL * _Nonnull stop) {
+                    [NSURLProtocol KKJSBridgeRegisterScheme:scheme];
+                }];
             } else {
                 [NSURLProtocol KKJSBridgeUnregisterScheme:@"https"];
                 [NSURLProtocol KKJSBridgeUnregisterScheme:@"http"];
+                [_customSchemes enumerateObjectsUsingBlock:^(NSString * _Nonnull scheme, NSUInteger idx, BOOL * _Nonnull stop) {
+                    [NSURLProtocol KKJSBridgeUnregisterScheme:scheme];
+                }];
             }
         } break;
             
@@ -99,6 +105,17 @@ static NSArray<Class> *_protocolClasses;
 + (void)setProtocolClasses:(NSArray<Class> *)protocolClasses
 {
     _protocolClasses = [protocolClasses copy];
+}
+
+static NSArray<NSString *> *_customSchemes;
++ (NSArray<NSString *> *)customSchemes
+{
+    return _customSchemes;
+}
+
++ (void)setCustomSchemes:(NSArray<NSString *> *)customSchemes
+{
+    _customSchemes = [customSchemes copy];
 }
 
 #if defined (KKUnity) || defined (KKAjaxProtocolHook)
