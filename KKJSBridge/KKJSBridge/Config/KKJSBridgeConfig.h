@@ -69,6 +69,9 @@ typedef NS_ENUM(unsigned char, KKWebViewProgram) {
 /// 提供接口注册业务的 NSURLProtocol，在内置的 KKJSBridgeAjaxURLProtocol 之后注册。
 @property (class, nonatomic, copy) NSArray<Class> *protocolClasses;
 
+/// 注册自定义的 sheme
+@property (class, nonatomic, copy) NSArray<NSString *> *customSchemes;
+
 /// 方案，默认是 KKWebViewProgramAjaxProtocolHook
 @property (class, nonatomic, assign) KKWebViewProgram program;
 
