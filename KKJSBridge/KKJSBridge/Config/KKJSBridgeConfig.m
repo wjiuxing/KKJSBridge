@@ -136,6 +136,17 @@ static KKWebViewProgram globalWebViewProgram = KKWebViewProgramAjaxHook;
 #endif
 }
 
+static BOOL (^_synCallValidationBlock)(NSURL *);
++ (BOOL (^)(NSURL *))syncCallValidation
+{
+    return _synCallValidationBlock;
+}
+
++ (void)setSyncCallValidation:(BOOL (^)(NSURL *))syncCallValidationBlock
+{
+    _synCallValidationBlock = syncCallValidationBlock;
+}
+
 #pragma mark - private
 - (void)evaluateConfigScript:(NSString *)script {
     if (self.engine.isBridgeReady) {

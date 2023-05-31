@@ -75,6 +75,8 @@ typedef NS_ENUM(unsigned char, KKWebViewProgram) {
 /// 方案，默认是 KKWebViewProgramAjaxProtocolHook
 @property (class, nonatomic, assign) KKWebViewProgram program;
 
+@property (class, nonatomic, copy) BOOL (^syncCallValidation)(NSURL *URL);
+
 @end
 
 NS_ASSUME_NONNULL_END
