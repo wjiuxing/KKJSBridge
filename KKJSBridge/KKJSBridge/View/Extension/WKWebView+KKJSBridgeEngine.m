@@ -29,7 +29,10 @@
         return NO;
     }
 
-    if (!defaultText || !self.kk_engine) {
+    if (!defaultText
+        || !self.kk_engine
+        || (nil != KKJSBridgeConfig.syncCallValidation
+            && !KKJSBridgeConfig.syncCallValidation(self.URL))) {
         completionHandler ? completionHandler(nil) : nil;
         return YES;
     }
