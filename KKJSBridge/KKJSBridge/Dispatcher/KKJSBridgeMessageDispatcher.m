@@ -79,20 +79,25 @@ typedef void (^KKJSBridgeMessageCallback)(NSDictionary *responseData);
         if ([value containsString:@"."]) {
             NSArray<NSString *> *components = [value componentsSeparatedByString:@"."];
             if (components.count == 2) {
-                moduleName = components[0];
-                methodName = components[1];
-                
-                metaClass = [self.engine.moduleRegister getModuleMetaClassByModuleName:moduleName];
-                if (!metaClass) {
+                if (components.firstObject.length > 0) {
+                    moduleName = components.firstObject;
+                    
+                    metaClass = [self.engine.moduleRegister getModuleMetaClassByModuleName:moduleName];
+                    if (!metaClass) {
 #ifdef DEBUG
-                    NSLog(@"KKJSBridge Error: module %@ is not registered", moduleName);
+                        NSLog(@"KKJSBridge Error: module %@ is not registered", moduleName);
 #endif
-                    return;
+                        return;
+                    }
+                    
+                    nativeClass = metaClass.moduleClass;
+                    moduleClass = nativeClass;
                 }
                 
-                nativeClass = metaClass.moduleClass;
-                moduleClass = nativeClass;
+                methodName = components[1];
             }
+        } else if (value.length > 0) {
+            methodName = value;
         }
     }
     
