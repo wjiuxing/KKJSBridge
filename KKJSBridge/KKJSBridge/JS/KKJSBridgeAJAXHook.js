@@ -1419,7 +1419,11 @@
                   }
                   else { // 说明是字符串或者json
                       bodyRequest.bodyType = "String";
-                      bodyRequest.value = body;
+                      if (body == null) {
+                          delete bodyRequest.value;
+                      } else {
+                          bodyRequest.value = body;
+                      }
                   }
                   sendBody(bodyRequest, requestAsync);
                   return true;
